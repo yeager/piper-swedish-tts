@@ -1,49 +1,68 @@
 # 🇸🇪 Piper Swedish TTS — High-Quality Voice Training
 
-Swedish Piper voice work for natural, offline text-to-speech.
-
-## Voices
-
-### Axel v5
-- **Voice**: male Swedish voice
-- **Status**: exported from the final v5 checkpoint
-- **Checkpoint**: `epoch=4999-step=7998000.ckpt`
-- **Files**: `models/axel-v5/`
-- **Includes**:
-  - `axel-v5.onnx`
-  - `axel-v5.onnx.json`
-  - `axel-v5-test-2026-04-06.wav`
-  - `test-text-2026-04-06.txt`
-
-### Alma
-- **Voice**: female Swedish voice
-- **Important**: Alma and Axel are separate voices and must not be mixed.
+Training a better Swedish text-to-speech voice for [Piper](https://github.com/rhasspy/piper), targeting children's accessibility apps.
 
 ## Why?
 
-The goal is better Swedish TTS for accessibility tools and open software, with warmer prosody and more natural pacing than the stock NST voice.
+The existing Piper Swedish voice (`sv_SE-nst-medium`) is functional but sounds robotic. We're finetuning [KBLab's pretrained checkpoint](https://huggingface.co/KBLab/piper-tts-nst-swedish) to produce a warmer, more natural-sounding Swedish voice — specifically for use in [autismapps](https://github.com/yeager/autismapps), a PWA suite of 42 AAC/autism apps for children.
 
-## Usage
+## Approach
+
+1. **Base model**: KBLab/piper-tts-nst-swedish (epoch 4041, 1.75M training steps)
+2. **Dataset**: [NST Swedish TTS](https://huggingface.co/datasets/jimregan/nst_swedish_tts) — 5300 recordings from a single Swedish speaker (CC0 Public Domain)
+3. **Architecture**: VITS (via Piper's training pipeline)
+4. **Training**: Continue training from KBLab's checkpoint with tuned hyperparameters
+5. **Export**: ONNX model for Piper WASM (runs in-browser, fully offline)
+6. **Platform**: Google Colab free tier (T4 GPU)
+
+## What KBLab Did
+
+[KBLab](https://kb-labb.github.io/posts/2023-05-24-swedish-text-to-speech/) (National Library of Sweden) trained the original Swedish Piper voice on the NST dataset and published both the Piper model and their training checkpoint. Their work made this possible — we're building on it.
+
+### Known Issues with Current Voice
+- Robotic/flat prosody
+- espeak-ng phonemization errors for some Swedish words
+- No tone accent distinction (accent 1 vs accent 2)
+- Monotone — lacks the natural melody of Swedish speech
+
+## What We're Doing
+
+- **Extended training** (target: 2-3M total steps) for better convergence
+- **Hyperparameter tuning** (learning rate, batch size)
+- **Quality evaluation** focused on children's app use cases (simple sentences, clear enunciation)
+- **ONNX export** optimized for browser deployment (Piper WASM)
+
+## Quick Start
+
+1. Open [`train_swedish_tts.ipynb`](train_swedish_tts.ipynb) in Google Colab
+2. Runtime → Change runtime type → **T4 GPU**
+3. Run all cells
+4. Training takes ~8-12h per session on T4
+5. Model saves to Google Drive (survives disconnects)
+6. Export ONNX when satisfied with quality
+
+## Using the Trained Model
+
+The exported `.onnx` file is a drop-in replacement for Piper's `sv_SE-nst-medium.onnx`:
 
 ```bash
-echo "Hej! Det här är Axel version fem." | piper \
-  --model models/axel-v5/axel-v5.onnx \
-  --output_file axel-test.wav
+echo "Hej! Jag hjälper dig med dina övningar." | piper \
+  --model sv_SE-nst-medium.onnx \
+  --output_file output.wav
 ```
 
-## Training background
-
-- Base work builds on KBLab's Swedish Piper checkpoint and the NST Swedish dataset.
-- Exported ONNX is intended for practical use in Piper-compatible apps and services.
+For browser use (autismapps), place the `.onnx` file in `static/voices/` and update the voice configuration.
 
 ## Credits
 
-- KBLab
-- NST / Norwegian Language Bank
-- Piper
-- espeak-ng
+- **[KBLab](https://kb-labb.github.io/)** — pretrained checkpoint and original training
+- **[NST / Norwegian Language Bank](https://www.nb.no/sprakbanken/)** — Swedish speech dataset (CC0)
+- **[Piper](https://github.com/rhasspy/piper)** — TTS engine and training framework
+- **[espeak-ng](https://github.com/espeak-ng/espeak-ng)** — phonemization
 
 ## License
 
 Training code: MIT  
-Model artifacts in this repo: see upstream dataset/model terms.
+NST dataset: CC0 1.0 (Public Domain)  
+Piper: MIT  
+Trained model weights: CC0 1.0
